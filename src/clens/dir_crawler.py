@@ -3,10 +3,12 @@ from pathlib import Path
 image_types = ["jpg", "png"]
 
 
-def find_files(root_dir: str) -> list[Path]:
+def find_images(root_dir: str | Path) -> list[Path]:
     root = Path(root_dir)
+    if root.is_file():
+        raise NotADirectoryError("Path must be a directory and not a file")
     if not root.exists():
-        raise NotADirectoryError("No such directory found.")
+        raise FileNotFoundError("No such directory found.")
 
     file_paths: list[Path] = []
     for image_type in image_types:

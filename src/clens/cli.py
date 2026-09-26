@@ -12,6 +12,10 @@ def cli():
 
     match args.command:
         case "index":
-            print(f"The {args.path} directory will be indexed")
+            from clens.indexer import index_files
+
+            index_files(args.path)
+        case "find":
+            pass
         case _:
             parser.print_help()
