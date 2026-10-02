@@ -7,7 +7,12 @@ authors = [
     { name = "k4rkie", email = "karkeekrish07@gmail.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "chromadb>=1.5.9",
+    "filetype>=1.2.0",
+    "pillow>=12.3.0",
+    "sentence-transformers>=6.1.0",
+]
 
 [project.scripts]
 clens = "clens.cli:cli"
