@@ -20,7 +20,7 @@ def embed_images(files: list[Path]) -> list[ImageData]:
 
     for file in files:
         image = Image.open(file)
-        image_embedding = model.encode(image)
+        image_embedding = model.encode(image, normalize_embeddings=True)
         image_data.append(
             {
                 "id": uuid.uuid4(),
@@ -37,4 +37,4 @@ def embed_text(query_text: str):
 
     model = SentenceTransformer("clip-ViT-B-32")
 
-    return model.encode(query_text)
+    return model.encode(query_text, normalize_embeddings=True)
