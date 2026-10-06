@@ -5,5 +5,4 @@ def search_images(query_text: str):
     query_text_embd = embed_text(query_text)
     chroma_client = init_chroma_client("./.chroma_store")
 
-    results = retrieve_images(query_text_embd, chroma_client)
-    print(results)
+    return retrieve_images(query_text_embd, chroma_client)
