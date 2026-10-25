@@ -26,6 +26,6 @@ def store_image_data(client: ClientAPI, image_data: list[ImageData]) -> None:
     )
 
 
-def retrieve_images(embedding, client: ClientAPI, result_count=5) -> QueryResult:
+def retrieve_images(embedding, client: ClientAPI, result_count: int) -> QueryResult:
     image_collection = client.get_collection("image_data")
     return image_collection.query(query_embeddings=embedding, n_results=result_count)

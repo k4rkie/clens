@@ -15,11 +15,17 @@ import logging
 
 class ClensCLIParser(argparse.ArgumentParser):
     COMMANDS = {
-        "server": {"desc": "Manage the clens server"},
-        "index": {"desc": "Index a given directory of images"},
-        "find": {"desc": "Find an image from the indexed directories"},
-        "match": {"desc": "Match an image from the indexed directories"},
-        "version": {"desc": "Print the current clens version"},
+        "server": {"desc": "Manage the clens server", "req_server": False},
+        "index": {"desc": "Index a given directory of images", "req_server": True},
+        "find": {
+            "desc": "Find an image from the indexed directories",
+            "req_server": True,
+        },
+        "match": {
+            "desc": "Match an image from the indexed directories",
+            "req_server": True,
+        },
+        "version": {"desc": "Print the current clens version", "req_server": False},
     }
 
     @override
@@ -47,7 +53,11 @@ Commands:
 {command_desc}
 
 Examples:
+    clens start server --port 6969 --detach
+
     clens index ./Pictures
+
+    clens find "a dog with a hat"
 
 """
 
@@ -73,35 +83,46 @@ def cli():
     server_commands = server_parser.add_subparsers(dest="server_action", required=True)
 
     server_start_parser = server_commands.add_parser(
-        "start", help="start the clens server"
+        "start", help="Start the clens server"
     )
     server_start_parser.add_argument(
         "-H",
         "--host",
         type=str,
         default=config.preferences.default_host,
-        help="host to start the server on",
+        help="Host to start the server on",
     )
     server_start_parser.add_argument(
         "-p",
         "--port",
         type=int,
         default=config.preferences.default_port,
-        help="port to start the server on",
+        help="Port to start the server on",
     )
     server_start_parser.add_argument(
-        "-d", "--detach", action="store_true", help="detach server from current shell"
+        "-d", "--detach", action="store_true", help="Detach server from current shell"
     )
 
-    server_commands.add_parser("stop", help="stop the clens server")
+    server_commands.add_parser("stop", help="Stop the clens server")
+    server_commands.add_parser("status", help="Get the clens server status")
 
     # Index sub command
     index_parser = commands.add_parser("index")
-    index_parser.add_argument("path", help="directory to index")
+    index_parser.add_argument("path", help="Directory to index")
 
     # Find sub command
     find_parser = commands.add_parser("find")
     find_parser.add_argument("query_term")
+    find_parser.add_argument(
+        "-p", "--plain", action="store_true", help="Output plain tab-seperated result"
+    )
+    find_parser.add_argument(
+        "-c",
+        "--count",
+        type=int,
+        default=5,
+        help="Number of images to find (Default: 5)",
+    )
 
     # Match sub command
     match_parser = commands.add_parser("match")
@@ -111,6 +132,12 @@ def cli():
     version = commands.add_parser("version")
 
     args = clens_parser.parse_args()
+
+    if args.command is not None and clens_parser.COMMANDS[args.command]["req_server"]:
+        if not config.runtime.pid or not config.runtime.active_port:
+            logger.error("Clens server is not running!")
+            logger.info("Start the server first with: clens server start")
+            sys.exit(1)
 
     match args.command:
         case "server":
@@ -126,6 +153,10 @@ def cli():
                     from clens.command_handlers import cmd_stop_server
 
                     cmd_stop_server(config, config_path)
+                case "status":
+                    from clens.command_handlers import cmd_server_status
+
+                    cmd_server_status(config)
 
         case "index":
             from clens.command_handlers import cmd_index_images
@@ -134,7 +165,7 @@ def cli():
         case "find":
             from clens.command_handlers import cmd_find_images
 
-            cmd_find_images(config, args.query)
+            cmd_find_images(config, args.query_term, plain=args.plain, count=args.count)
         case "match":
             pass
         case "version":

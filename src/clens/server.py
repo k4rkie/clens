@@ -1,7 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from clens.indexer import index_images
-from clens.search import search_images
-from clens.data_schemas import IndexDirData
+from clens.data_schemas import IndexDirData, FindImageData
 import logging
 
 logging.basicConfig(
@@ -20,6 +18,8 @@ def health():
 
 @clens_server.post("/api/index")
 def index_dir(req: IndexDirData):
+    from clens.indexer import index_images
+
     try:
         index_images(req.path)
         return {"message": f"The directory {req.path} has been indexed"}
@@ -29,12 +29,15 @@ def index_dir(req: IndexDirData):
         raise HTTPException(status_code=400, detail=f"{FNF}")
 
 
-@clens_server.post("/find")
-def find_image(query_text: str):
+@clens_server.post("/api/find")
+def find_image(req: FindImageData):
+    from clens.search import find_images
+
     try:
-        search_images(query_text)
+        result = find_images(req.query_term, req.count)
+        return {"message": result}
     except:
-        pass
+        raise HTTPException(status_code=500, detail=f"Internal Server Error")
 
 
 @clens_server.post("/match")
