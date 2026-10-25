@@ -1,5 +1,4 @@
 import os
-from typing import override
 
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 os.environ.setdefault("HF_HUB_VERBOSITY", "error")
@@ -7,8 +6,11 @@ os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import argparse
-import subprocess
 import sys
+from clens.app_config import AppConfig
+from pathlib import Path
+from typing import override
+import logging
 
 
 class ClensCLIParser(argparse.ArgumentParser):
@@ -50,7 +52,19 @@ Examples:
 """
 
 
+logging.basicConfig(
+    level=logging.INFO,
+    format=" [%(levelname)s] %(name)s: %(message)s",
+)
+
+logger = logging.getLogger(__name__)
+
+
 def cli():
+
+    config_path = Path.home() / ".config" / "clens" / "config.json"
+    config = AppConfig.load_from_file(config_path)
+
     clens_parser = ClensCLIParser(prog="clens", add_help=True)
     commands = clens_parser.add_subparsers(dest="command")
 
@@ -58,9 +72,26 @@ def cli():
     server_parser = commands.add_parser("server")
     server_commands = server_parser.add_subparsers(dest="server_action", required=True)
 
-    server_start_parser = server_commands.add_parser("start", help="start the clens server")
-    server_start_parser.add_argument("-p","--port", type=int, default=8080, help="port to start the server on")
-    server_start_parser.add_argument("-d","--detach", action="store_true",help="detach server from current shell")
+    server_start_parser = server_commands.add_parser(
+        "start", help="start the clens server"
+    )
+    server_start_parser.add_argument(
+        "-H",
+        "--host",
+        type=str,
+        default=config.preferences.default_host,
+        help="host to start the server on",
+    )
+    server_start_parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=config.preferences.default_port,
+        help="port to start the server on",
+    )
+    server_start_parser.add_argument(
+        "-d", "--detach", action="store_true", help="detach server from current shell"
+    )
 
     server_commands.add_parser("stop", help="stop the clens server")
 
@@ -83,16 +114,27 @@ def cli():
 
     match args.command:
         case "server":
-            print("You chose the action:", args.server_action)
             match args.server_action:
                 case "start":
-                    pass
+                    from clens.command_handlers import cmd_start_server
+
+                    logger.info("Starting the server...")
+                    cmd_start_server(
+                        config, config_path, args.host, args.port, args.detach
+                    )
                 case "stop":
-                    pass
+                    from clens.command_handlers import cmd_stop_server
+
+                    cmd_stop_server(config, config_path)
+
         case "index":
-            pass
+            from clens.command_handlers import cmd_index_images
+
+            cmd_index_images(config, args.path)
         case "find":
-            pass
+            from clens.command_handlers import cmd_find_images
+
+            cmd_find_images(config, args.query)
         case "match":
             pass
         case "version":

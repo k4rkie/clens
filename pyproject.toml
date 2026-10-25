@@ -1,7 +1,7 @@
 [project]
 name = "clens"
 version = "0.1.0"
-description = "Add your description here"
+description = "Local semantic image search tool"
 readme = "README.md"
 authors = [
     { name = "k4rkie", email = "karkeekrish07@gmail.com" }
