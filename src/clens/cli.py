@@ -46,7 +46,7 @@ Description:
     another image etc. locally on their device.
 
 Usage:
-    clens [COMMAND] <ARGUMENT>
+    clens [COMMAND] <ARGUMENT> <...options>
     clens [COMMAND] --help
 
 Commands:

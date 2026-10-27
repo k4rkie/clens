@@ -7,6 +7,10 @@ import os
 import subprocess
 import sys
 import time
+from typing import Any
+from clens.data_schemas import ResponseBody
+from pydantic import ValidationError
+from urllib.parse import urljoin, quote
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +147,7 @@ def cmd_server_status(config):
         print("Clens server isnt running!! Start the server with: clens server start")
 
 
-def cmd_index_images(config, path: str):
+def cmd_index_images(config, path: str) -> None:
     root_dir = Path(path).absolute()
     url = f"http://{config.runtime.active_host}:{config.runtime.active_port}/api/index"
 
@@ -156,18 +160,18 @@ def cmd_index_images(config, path: str):
             json={"path": str(root_dir)},
         )
         response.raise_for_status()
-        try:
-            data = response.json()
-        except ValueError:
-            data = response.text
 
-        logger.info(f"{data['message']}")
+        data = ResponseBody.model_validate_json(response.text)
 
+        logger.info(f"{data.message}")
+
+    except ValidationError as VE:
+        logger.error(f"API contract violation (Invalid response schema): {VE}")
     except requests.exceptions.ConnectionError:
         logger.error(f"Could not connect to {url}")
     except requests.exceptions.Timeout:
         logger.error(f"Request to {url} timed out")
-    except requests.exceptions.HTTPError:
+    except requests.exceptions.HTTPError as e:
         logger.error(f"{response.json()['detail']}")
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {e}")
@@ -175,29 +179,36 @@ def cmd_index_images(config, path: str):
     return None
 
 
-def cmd_find_images(config, query: str, plain: bool, count: int):
-    url = f"http://{config.runtime.active_host}:{config.runtime.active_port}/api/find"
+def cmd_find_images(config, query: str, plain: bool, count: int) -> None:
+
+    if count <= 0:
+        logger.error(f"count must be greater than 0: got -c/--count: {count}")
+        sys.exit(1)
+
+    url = urljoin(
+        f"http://{config.runtime.active_host}:{config.runtime.active_port}/api/find/",
+        quote(query),
+    )
 
     logger.info(f"Finding matches for {query}...")
     logger.info(f"This may take a few moments...")
 
     try:
-        response = requests.post(
+        response = requests.get(
             url,
-            json={"query_term": str(query), "count": count},
+            params={"count": count},
         )
         response.raise_for_status()
-        try:
-            data = response.json()
-        except ValueError:
-            data = response.text
+        data = ResponseBody.model_validate_json(response.text)
 
-        logger.info(f"Found results for {query}")
+        logger.info(f"{data.message}")
         if not plain:
-            display_find_results_table(data)
+            display_find_results_table(data.body)
             return
-        display_find_results_plain(data)
+        display_find_results_plain(data.body)
 
+    except ValidationError as VE:
+        logger.error(f"API contract violation (Invalid response schema): {VE}")
     except requests.exceptions.ConnectionError:
         logger.error(f"Connection: Could not connect to {url}")
     except requests.exceptions.Timeout:
