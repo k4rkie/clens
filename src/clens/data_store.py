@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Collection
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from chromadb.api import ClientAPI
@@ -6,10 +6,17 @@ if TYPE_CHECKING:
     from clens.embedder import ImageData
 
 
-def init_chroma_client(store_path: str) -> ClientAPI:
+DEFAULT_STORE_PATH = "./.chroma_store"
+_chroma_client = None
+
+
+def get_chroma_client() -> ClientAPI:
     from chromadb import PersistentClient
 
-    return PersistentClient(path=store_path)
+    global _chroma_client
+    if _chroma_client is None:
+        _chroma_client = PersistentClient(path=DEFAULT_STORE_PATH)
+    return _chroma_client
 
 
 def store_image_data(client: ClientAPI, image_data: list[ImageData]) -> None:

@@ -1,17 +1,28 @@
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, Response, status
+from contextlib import asynccontextmanager
 from clens.data_schemas import (
     IndexDirData,
     ResponseBody,
 )
 import logging
+from clens.embedder import get_model
+from clens.data_store import get_chroma_client
+import asyncio
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await asyncio.to_thread(get_model)
+    get_chroma_client()
+    yield
+
+
+clens_server = FastAPI(lifespan=lifespan)
 
 logging.basicConfig(
     level=logging.WARNING, format=" [%(levelname)s] %(name)s: %(message)s", force=True
 )
-
 logger = logging.getLogger(__name__)
-
-clens_server = FastAPI()
 
 
 @clens_server.get("/api/health", response_model=ResponseBody)

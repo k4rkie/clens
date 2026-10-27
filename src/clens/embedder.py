@@ -3,6 +3,18 @@ from filetype import guess_mime
 from typing import TypedDict
 import uuid
 
+CLIP_MODEL = "clip-ViT-B-32"
+_model = None
+
+
+def get_model():
+    from sentence_transformers import SentenceTransformer
+
+    global _model
+    if _model is None:
+        _model = SentenceTransformer(CLIP_MODEL)
+    return _model
+
 
 class ImageData(TypedDict):
     id: uuid.UUID
@@ -12,10 +24,9 @@ class ImageData(TypedDict):
 
 
 def embed_images(files: list[Path]) -> list[ImageData]:
-    from sentence_transformers import SentenceTransformer
     from PIL import Image
 
-    model = SentenceTransformer("clip-ViT-B-32")
+    model = get_model()
     image_data = []
 
     for file in files:
@@ -33,8 +44,6 @@ def embed_images(files: list[Path]) -> list[ImageData]:
 
 
 def embed_text(query_text: str):
-    from sentence_transformers import SentenceTransformer
-
-    model = SentenceTransformer("clip-ViT-B-32")
+    model = get_model()
 
     return model.encode(query_text, normalize_embeddings=True)

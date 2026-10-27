@@ -7,7 +7,6 @@ import os
 import subprocess
 import sys
 import time
-from typing import Any
 from clens.data_schemas import ResponseBody
 from pydantic import ValidationError
 from urllib.parse import urljoin, quote
@@ -41,7 +40,6 @@ def cmd_start_server(config, config_path: Path, host: str, port: int, detach: bo
                 host=host,
                 port=port,
                 log_level=logging.WARN,
-                reload=True,
                 access_log=False,
             )
 
@@ -80,7 +78,7 @@ def cmd_start_server(config, config_path: Path, host: str, port: int, detach: bo
         # Check if server is actually up
         health_url = f"http://{host}:{port}/api/health"
         server_started = False
-        timeout = 3.0
+        timeout = 60.0
         start_time = time.time()
 
         while time.time() - start_time < timeout:
