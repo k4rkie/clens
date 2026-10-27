@@ -10,52 +10,47 @@ import time
 from clens.data_schemas import ResponseBody
 from pydantic import ValidationError
 from urllib.parse import urljoin, quote
+from clens.paths import RUNTIME_FILE, LOG_FILE
+from clens.cli import runtime_state
 
 logger = logging.getLogger(__name__)
 
 
-def cmd_start_server(config, config_path: Path, host: str, port: int, detach: bool):
+def cmd_start_server(host: str, port: int, detach: bool):
     import uvicorn
 
-    config.runtime.active_host = host
-    config.runtime.active_port = port
+    os.environ["CLENS_RUNTIME_HOST"] = host
+    os.environ["CLENS_RUNTIME_PORT"] = str(port)
 
-    if config.runtime.pid:
+    if runtime_state.pid:
         try:
-            os.kill(config.runtime.pid, 0)
+            os.kill(runtime_state.pid, 0)
             logger.warning("Clens server is already running!")
             return
         except ProcessLookupError, OSError:
-            config.runtime.pid = None
-            config.runtime.active_host = None
-            config.runtime.active_port = None
+            runtime_state.pid = None
+            runtime_state.active_host = None
+            runtime_state.active_port = None
 
     if not detach:
         try:
             logger.info(f"Server running at http://{host}:{port}")
-            config.runtime.pid = os.getpid()
-            config.save_to_file(config_path)
             uvicorn.run(
                 "clens.server:clens_server",
                 host=host,
                 port=port,
-                log_level=logging.WARN,
+                log_level=logging.WARNING,
                 access_log=False,
             )
 
         finally:
             logger.info(f"Server shutting down....")
-            config.runtime.active_host = None
-            config.runtime.active_port = None
-            config.runtime.pid = None
-            config.save_to_file(config_path)
             logger.info(f"Server shutdown successfully.")
     else:
-        log_dir = Path.home() / ".cache" / "clens"
-        log_file = log_dir / "clens.log"
-        log_file.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Starting clens server...")
+        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-        output = open(log_file, "a")
+        output = open(LOG_FILE, "a")
 
         start_cmd = [
             sys.executable,
@@ -95,12 +90,10 @@ def cmd_start_server(config, config_path: Path, host: str, port: int, detach: bo
                 time.sleep(0.1)
 
         if server_started:
-            config.runtime.pid = process.pid
-            config.save_to_file(config_path)
             logger.info(
                 f"Server started in background on http://{host}:{port} (PID: {process.pid})"
             )
-            logger.info(f"Logs available at: {log_file}")
+            logger.info(f"Logs available at: {LOG_FILE}")
         else:
             # if server didnt respond check if the subprocess is still up
 
@@ -113,41 +106,34 @@ def cmd_start_server(config, config_path: Path, host: str, port: int, detach: bo
             logger.error("Failed to start clens server!")
 
 
-def cmd_stop_server(config, config_path: Path):
-    if not config.runtime.pid:
+def cmd_stop_server():
+    if not RUNTIME_FILE.exists():
         logger.error("No running clens server found.")
         return
     try:
-        os.kill(config.runtime.pid, signal.SIGTERM)
-        logger.info(f"Clens server stopped successfully (PID: {config.runtime.pid})")
+        os.kill(runtime_state.pid, signal.SIGTERM)
+        logger.info(f"Clens server stopped successfully (PID: {runtime_state.pid})")
     except ProcessLookupError:
         logger.info(f"Clens server was already stopped")
 
-    config.runtime.active_host = None
-    config.runtime.active_port = None
-    config.runtime.pid = None
-    config.save_to_file(config_path)
 
-
-def cmd_server_status(config):
-    if config.runtime.pid and config.runtime.active_host and config.runtime.active_port:
+def cmd_server_status():
+    if RUNTIME_FILE.exists() and runtime_state.pid is not None:
         try:
-            os.kill(config.runtime.pid, 0)
+            os.kill(runtime_state.pid, 0)
             print(
-                f"Clens server is running on http://{config.runtime.active_host}:{config.runtime.active_port} (PID: {config.runtime.pid}) "
+                f"Clens server is running on http://{runtime_state.active_host}:{runtime_state.active_port} (PID: {runtime_state.pid}) "
             )
             return
         except ProcessLookupError, OSError:
-            config.runtime.active_host = None
-            config.runtime.active_port = None
-            config.runtime.pid = None
+            pass
     else:
         print("Clens server isnt running!! Start the server with: clens server start")
 
 
-def cmd_index_images(config, path: str) -> None:
+def cmd_index_images(path: str) -> None:
     root_dir = Path(path).absolute()
-    url = f"http://{config.runtime.active_host}:{config.runtime.active_port}/api/index"
+    url = f"http://{runtime_state.active_host}:{runtime_state.active_port}/api/index"
 
     logger.info(f"Indexing the directory: {str(root_dir)}...")
     logger.info(f"This may take a few moments...")
@@ -177,14 +163,14 @@ def cmd_index_images(config, path: str) -> None:
     return None
 
 
-def cmd_find_images(config, query: str, plain: bool, count: int) -> None:
+def cmd_find_images(query: str, plain: bool, count: int) -> None:
 
     if count <= 0:
         logger.error(f"count must be greater than 0: got -c/--count: {count}")
         sys.exit(1)
 
     url = urljoin(
-        f"http://{config.runtime.active_host}:{config.runtime.active_port}/api/find/",
+        f"http://{runtime_state.active_host}:{runtime_state.active_port}/api/find/",
         quote(query),
     )
 

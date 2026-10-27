@@ -1,27 +1,19 @@
 from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime
 from pathlib import Path
+from clens.paths import CONFIG_FILE
 import json
 
 
 class UserPreferences(BaseModel):
     default_host: str = "127.0.0.1"
-    default_port: int = 8080
-
-
-class RuntimeState(BaseModel):
-    active_host: Optional[str] = None
-    active_port: Optional[int] = None
-    pid: Optional[int] = None
+    default_port: int = 6969
 
 
 class AppConfig(BaseModel):
     preferences: UserPreferences = Field(default_factory=UserPreferences)
-    runtime: RuntimeState = Field(default_factory=RuntimeState)
 
     @classmethod
-    def load_from_file(cls, path: Path) -> "AppConfig":
+    def load_from_file(cls, path: Path = CONFIG_FILE) -> "AppConfig":
         if not path.exists():
             return cls()
         try:
@@ -31,7 +23,7 @@ class AppConfig(BaseModel):
         except Exception:
             return cls()
 
-    def save_to_file(self, path: Path) -> None:
+    def save_to_file(self, path: Path = CONFIG_FILE) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             f.write(self.model_dump_json(indent=2))

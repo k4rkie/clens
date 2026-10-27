@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+from clens.paths import STORE_DIR
 
 if TYPE_CHECKING:
     from chromadb.api import ClientAPI
@@ -6,7 +7,6 @@ if TYPE_CHECKING:
     from clens.embedder import ImageData
 
 
-DEFAULT_STORE_PATH = "./.chroma_store"
 _chroma_client = None
 
 
@@ -15,7 +15,7 @@ def get_chroma_client() -> ClientAPI:
 
     global _chroma_client
     if _chroma_client is None:
-        _chroma_client = PersistentClient(path=DEFAULT_STORE_PATH)
+        _chroma_client = PersistentClient(path=STORE_DIR)
     return _chroma_client
 
 

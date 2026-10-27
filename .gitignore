@@ -9,5 +9,4 @@ wheels/
 # Virtual environments
 .venv
 
-.chroma_store
 sample_images/

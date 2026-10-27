@@ -8,13 +8,22 @@ import logging
 from clens.embedder import get_model
 from clens.data_store import get_chroma_client
 import asyncio
+from clens.runtime import RuntimeState
+import os
+
+runtime_state = RuntimeState().load_runtime()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    runtime_state.active_host = os.environ.get("CLENS_RUNTIME_HOST")
+    runtime_state.active_port = int(os.environ.get("CLENS_RUNTIME_PORT"))
+    runtime_state.pid = os.getpid()
+    runtime_state.save_runtime()
     await asyncio.to_thread(get_model)
     get_chroma_client()
     yield
+    runtime_state.clear_runtime()
 
 
 clens_server = FastAPI(lifespan=lifespan)

@@ -12,7 +12,10 @@ def get_model():
 
     global _model
     if _model is None:
-        _model = SentenceTransformer(CLIP_MODEL)
+        try:
+            _model = SentenceTransformer(CLIP_MODEL, local_files_only=True)
+        except Exception:
+            _model = SentenceTransformer(CLIP_MODEL)
     return _model
 
 

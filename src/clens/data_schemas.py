@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Generic, TypeVar
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -10,4 +10,4 @@ class IndexDirData(BaseModel):
 
 class ResponseBody(BaseModel, Generic[T]):
     message: str
-    body: Optional[T] = None
+    body: T | None = None

@@ -11,6 +11,8 @@ from clens.app_config import AppConfig
 from pathlib import Path
 from typing import override
 import logging
+from clens.paths import CONFIG_FILE, RUNTIME_FILE
+from clens.runtime import RuntimeState
 
 
 class ClensCLIParser(argparse.ArgumentParser):
@@ -68,12 +70,13 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+runtime_state = RuntimeState().load_runtime()
+
+config = AppConfig.load_from_file(CONFIG_FILE)
+config.save_to_file()
 
 
 def cli():
-
-    config_path = Path.home() / ".config" / "clens" / "config.json"
-    config = AppConfig.load_from_file(config_path)
 
     clens_parser = ClensCLIParser(prog="clens", add_help=True)
     commands = clens_parser.add_subparsers(dest="command")
@@ -134,7 +137,7 @@ def cli():
     args = clens_parser.parse_args()
 
     if args.command is not None and clens_parser.COMMANDS[args.command]["req_server"]:
-        if not config.runtime.pid or not config.runtime.active_port:
+        if not RUNTIME_FILE.exists():
             logger.error("Clens server is not running!")
             logger.info("Start the server first with: clens server start")
             sys.exit(1)
@@ -145,27 +148,24 @@ def cli():
                 case "start":
                     from clens.command_handlers import cmd_start_server
 
-                    logger.info("Starting the server...")
-                    cmd_start_server(
-                        config, config_path, args.host, args.port, args.detach
-                    )
+                    cmd_start_server(args.host, args.port, args.detach)
                 case "stop":
                     from clens.command_handlers import cmd_stop_server
 
-                    cmd_stop_server(config, config_path)
+                    cmd_stop_server()
                 case "status":
                     from clens.command_handlers import cmd_server_status
 
-                    cmd_server_status(config)
+                    cmd_server_status()
 
         case "index":
             from clens.command_handlers import cmd_index_images
 
-            cmd_index_images(config, args.path)
+            cmd_index_images(args.path)
         case "find":
             from clens.command_handlers import cmd_find_images
 
-            cmd_find_images(config, args.query_term, plain=args.plain, count=args.count)
+            cmd_find_images(args.query_term, plain=args.plain, count=args.count)
         case "match":
             pass
         case "version":
