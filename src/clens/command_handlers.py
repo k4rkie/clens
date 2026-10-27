@@ -1,5 +1,4 @@
 import signal
-
 import requests
 from pathlib import Path
 import logging
@@ -17,24 +16,19 @@ logger = logging.getLogger(__name__)
 
 
 def cmd_start_server(host: str, port: int, detach: bool):
-    import uvicorn
+
+    if RUNTIME_FILE.exists() and runtime_state.pid is not None:
+        logger.warning("Clens server is already running!")
+        return
 
     os.environ["CLENS_RUNTIME_HOST"] = host
     os.environ["CLENS_RUNTIME_PORT"] = str(port)
 
-    if runtime_state.pid:
-        try:
-            os.kill(runtime_state.pid, 0)
-            logger.warning("Clens server is already running!")
-            return
-        except ProcessLookupError, OSError:
-            runtime_state.pid = None
-            runtime_state.active_host = None
-            runtime_state.active_port = None
-
     if not detach:
         try:
             logger.info(f"Server running at http://{host}:{port}")
+            import uvicorn
+
             uvicorn.run(
                 "clens.server:clens_server",
                 host=host,
@@ -79,7 +73,7 @@ def cmd_start_server(host: str, port: int, detach: bool):
         while time.time() - start_time < timeout:
             exit_code = process.poll()
             if exit_code is not None:
-                break  # Process died!
+                break
 
             try:
                 res = requests.get(health_url, timeout=0.2)
@@ -163,7 +157,7 @@ def cmd_index_images(path: str) -> None:
     return None
 
 
-def cmd_find_images(query: str, plain: bool, count: int) -> None:
+def cmd_find_images(query: str, count: int, plain: bool) -> None:
 
     if count <= 0:
         logger.error(f"count must be greater than 0: got -c/--count: {count}")
@@ -174,7 +168,7 @@ def cmd_find_images(query: str, plain: bool, count: int) -> None:
         quote(query),
     )
 
-    logger.info(f"Finding matches for {query}...")
+    logger.info(f"Finding results for {query}...")
     logger.info(f"This may take a few moments...")
 
     try:
@@ -187,9 +181,9 @@ def cmd_find_images(query: str, plain: bool, count: int) -> None:
 
         logger.info(f"{data.message}")
         if not plain:
-            display_find_results_table(data.body)
+            display_results_table(data.body)
             return
-        display_find_results_plain(data.body)
+        display_results_plain(data.body)
 
     except ValidationError as VE:
         logger.error(f"API contract violation (Invalid response schema): {VE}")
@@ -198,14 +192,59 @@ def cmd_find_images(query: str, plain: bool, count: int) -> None:
     except requests.exceptions.Timeout:
         logger.error(f"Timeout: Request to {url} timed out")
     except requests.exceptions.HTTPError:
-        logger.error(f"HTTP {response.json()['detail']}")
+        data = ResponseBody.model_validate_json(response.text)
+        logger.error(f"{data.message}")
+        if data.error_type == "ChromaNotFoundError":
+            logger.info(f"Index a directory first! Try: clens index <path>")
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {e}")
     return None
 
 
-def display_find_results_table(res) -> None:
-    results = res.get("message", res)
+def cmd_match_image(img_path: str, count: int, plain: bool) -> None:
+    image_to_match = Path(img_path).absolute()
+    print(count)
+
+    if count <= 0:
+        logger.error(f"count must be greater than 0: got -c/--count: {count}")
+        sys.exit(1)
+
+    url = f"http://{runtime_state.active_host}:{runtime_state.active_port}/api/match"
+
+    logger.info(f"Finding matches for {os.path.basename(img_path)}...")
+    logger.info(f"This may take a few moments...")
+
+    try:
+        response = requests.get(
+            url,
+            params={"image_path": img_path, "count": count},
+        )
+        response.raise_for_status()
+        data = ResponseBody.model_validate_json(response.text)
+
+        logger.info(f"{data.message}")
+        if not plain:
+            display_results_table(data.body)
+            return
+        display_results_plain(data.body)
+
+    except ValidationError as VE:
+        logger.error(f"API contract violation (Invalid response schema): {VE}")
+    except requests.exceptions.ConnectionError:
+        logger.error(f"Connection: Could not connect to {url}")
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout: Request to {url} timed out")
+    except requests.exceptions.HTTPError:
+        data = ResponseBody.model_validate_json(response.text)
+        if data.error_type == "ChromaNotFoundError":
+            logger.info(f"Index a directory first! Try: clens index <path>")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request failed: {e}")
+    return None
+
+
+def display_results_table(response) -> None:
+    results = response.get("message", response)
     metadatas = results.get("metadatas", [[]])
     distances = results.get("distances", [[]])
 
@@ -261,8 +300,8 @@ def display_find_results_table(res) -> None:
     print(f"\033[97mFound {len(rows)} matching results\033[0m\n")
 
 
-def display_find_results_plain(res) -> None:
-    results = res.get("message", res)
+def display_results_plain(response) -> None:
+    results = response.get("message", response)
     metadatas = results.get("metadatas", [[]])
     distances = results.get("distances", [[]])
 

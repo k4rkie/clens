@@ -1,14 +1,12 @@
 from fastapi import FastAPI, Response, status
 from contextlib import asynccontextmanager
-from clens.data_schemas import (
-    IndexDirData,
-    ResponseBody,
-)
+from clens.data_schemas import IndexDirData, ResponseBody
 import logging
 from clens.embedder import get_model
 from clens.data_store import get_chroma_client
 import asyncio
 from clens.runtime import RuntimeState
+from chromadb.errors import NotFoundError as ChromaNotFoundError
 import os
 
 runtime_state = RuntimeState().load_runtime()
@@ -48,10 +46,10 @@ def index_dir(req: IndexDirData, response: Response):
         return ResponseBody(message=f"The directory {req.path} has been indexed")
     except NotADirectoryError as NAD:
         response.status_code = status.HTTP_400_BAD_REQUEST
-        return ResponseBody(message=f"{NAD}")
+        return ResponseBody(message=f"{NAD}", error_type="NotADirectoryError")
     except FileNotFoundError as FNF:
         response.status_code = status.HTTP_400_BAD_REQUEST
-        return ResponseBody(message=f"{FNF}")
+        return ResponseBody(message=f"{FNF}", error_type="FileNotFoundError")
 
 
 @clens_server.get("/api/find/{query_term}", response_model=ResponseBody)
@@ -60,7 +58,38 @@ def find_image(query_term: str, response: Response, count: int = 5):
 
     try:
         result = find_images(query_term, count)
-        return ResponseBody(message=f"Found images for {query_term}", body=result)
-    except:
+        return ResponseBody(message=f"Found results for {query_term}", body=result)
+    except ChromaNotFoundError:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return ResponseBody(
+            message="Seems like you have no indexed directories",
+            error_type="ChromaNotFoundError",
+        )
+    except Exception:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return ResponseBody(message=f"Something went wrong")
+        return ResponseBody(
+            message=f"Something went wrong", error_type="InternalServerError"
+        )
+
+
+@clens_server.get("/api/match", response_model=ResponseBody)
+def match_image(image_path: str, response: Response, count: int = 5):
+    from clens.search import match_images
+    from pathlib import Path
+
+    try:
+        result = match_images(Path(image_path).absolute(), count)
+        return ResponseBody(
+            message=f"Found matches for {os.path.basename(image_path)}", body=result
+        )
+    except ChromaNotFoundError:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return ResponseBody(
+            message="Seems like you have no indexed directories",
+            error_type="ChromaNotFoundError",
+        )
+    except Exception:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBody(
+            message=f"Something went wrong", error_type="InternalServerError"
+        )

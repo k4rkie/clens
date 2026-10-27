@@ -11,3 +11,4 @@ class IndexDirData(BaseModel):
 class ResponseBody(BaseModel, Generic[T]):
     message: str
     body: T | None = None
+    error_type: str | None = None

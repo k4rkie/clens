@@ -26,15 +26,21 @@ class ImageData(TypedDict):
     embedding: list[float]
 
 
-def embed_images(files: list[Path]) -> list[ImageData]:
+def embed_image(image_path: Path):
+
     from PIL import Image
 
     model = get_model()
+    image = Image.open(image_path)
+    return model.encode(image, normalize_embeddings=True)
+
+
+def embed_images(files: list[Path]) -> list[ImageData]:
+
     image_data = []
 
     for file in files:
-        image = Image.open(file)
-        image_embedding = model.encode(image, normalize_embeddings=True)
+        image_embedding = embed_image(file)
         image_data.append(
             {
                 "id": uuid.uuid4(),

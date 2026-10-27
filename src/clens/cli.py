@@ -129,7 +129,17 @@ def cli():
 
     # Match sub command
     match_parser = commands.add_parser("match")
-    match_parser.add_argument("image")
+    match_parser.add_argument("image_path", help="image to find matches for")
+    match_parser.add_argument(
+        "-c",
+        "--count",
+        type=int,
+        default=5,
+        help="Numbers of images to find (Default: 5)",
+    )
+    match_parser.add_argument(
+        "-p", "--plain", action="store_true", help="Output plain tab-seperated result"
+    )
 
     # Version sub command
     version = commands.add_parser("version")
@@ -165,9 +175,11 @@ def cli():
         case "find":
             from clens.command_handlers import cmd_find_images
 
-            cmd_find_images(args.query_term, plain=args.plain, count=args.count)
+            cmd_find_images(args.query_term, args.count, args.plain)
         case "match":
-            pass
+            from clens.command_handlers import cmd_match_image
+
+            cmd_match_image(args.image_path, args.count, args.plain)
         case "version":
             print("clens v0.0.1")
         case _:
