@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 from clens.paths import STORE_DIR
+from clens.data_schemas import Candidate
 
 if TYPE_CHECKING:
     from chromadb.api import ClientAPI
@@ -17,6 +18,23 @@ def get_chroma_client() -> ClientAPI:
     if _chroma_client is None:
         _chroma_client = PersistentClient(path=STORE_DIR)
     return _chroma_client
+
+
+def filter_preexisting_images(
+    client: ClientAPI, candidates: list[Candidate]
+) -> list[Candidate]:
+    image_collection = client.get_or_create_collection(
+        "image_data", configuration={"hnsw": {"space": "cosine"}}
+    )
+
+    existing_ids: set[str] = set(
+        image_collection.get(ids=[entry["id"] for entry in candidates])["ids"]
+    )
+
+    if len(existing_ids) == 0:
+        return candidates
+
+    return [entry for entry in candidates if entry["id"] not in existing_ids]
 
 
 def store_image_data(client: ClientAPI, image_data: list[ImageData]) -> None:

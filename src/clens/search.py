@@ -1,4 +1,5 @@
 from pathlib import Path
+from PIL import Image
 
 
 def find_images(query_text: str, count: int):
@@ -14,8 +15,10 @@ def find_images(query_text: str, count: int):
 def match_images(img_path: Path, count: int):
     from clens.embedder import embed_image
     from clens.data_store import get_chroma_client, retrieve_images
+    from PIL import Image
 
-    image_embedding = embed_image(img_path)
+    image_data = Image.open(img_path)
+    image_embedding = embed_image(image_data)
 
     chroma_client = get_chroma_client()
 

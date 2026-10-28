@@ -33,7 +33,7 @@ def cmd_start_server(host: str, port: int, detach: bool):
                 "clens.server:clens_server",
                 host=host,
                 port=port,
-                log_level=logging.WARNING,
+                log_level=logging.INFO,
                 access_log=False,
             )
 
@@ -150,7 +150,8 @@ def cmd_index_images(path: str) -> None:
     except requests.exceptions.Timeout:
         logger.error(f"Request to {url} timed out")
     except requests.exceptions.HTTPError as e:
-        logger.error(f"{response.json()['detail']}")
+        data = ResponseBody.model_validate_json(response.text)
+        logger.error(f"{data.message}")
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {e}")
 

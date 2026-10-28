@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
 clens_server = FastAPI(lifespan=lifespan)
 
 logging.basicConfig(
-    level=logging.WARNING, format=" [%(levelname)s] %(name)s: %(message)s", force=True
+    level=logging.INFO, format=" [%(levelname)s] %(name)s: %(message)s", force=True
 )
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,11 @@ def index_dir(req: IndexDirData, response: Response):
     except FileNotFoundError as FNF:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return ResponseBody(message=f"{FNF}", error_type="FileNotFoundError")
+    except Exception as E:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBody(
+            message=f"Something went wrong", error_type="InternalServerError"
+        )
 
 
 @clens_server.get("/api/find/{query_term}", response_model=ResponseBody)

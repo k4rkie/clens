@@ -10,6 +10,9 @@ def index_images(root_dir: str) -> None:
     # generate embeddings from images
     image_data = embed_images(file_paths)
 
+    if len(image_data) == 0:
+        return
+
     # get the shared chroma client
     chroma_client = get_chroma_client()
 
