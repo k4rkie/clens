@@ -1,11 +1,21 @@
 [project]
-name = "clens"
-version = "0.1.0"
+name = "clens-cli"
+version = "1.0.1"
 description = "Local semantic image search tool"
 readme = "README.md"
 authors = [
     { name = "k4rkie", email = "karkeekrish07@gmail.com" }
 ]
+license = { file = "LICENSE" }
+keywords = ["cli", "image search", "semantic search", "computer vision"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Graphics",
+]
+project-urls = { Repository = "https://github.com/k4rkie/clens" }
 requires-python = ">=3.14"
 dependencies = [
     "chromadb>=1.5.9",
@@ -13,6 +23,7 @@ dependencies = [
     "filetype>=1.2.0",
     "pillow>=12.3.0",
     "sentence-transformers>=6.1.0",
+    "torch>=2.14.0",
 ]
 
 [project.scripts]
@@ -21,6 +32,17 @@ clens = "clens.cli:cli"
 [build-system]
 requires = ["uv_build>=0.12.11,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "clens"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
 
 [dependency-groups]
 dev = [
@@ -34,4 +56,3 @@ exclude = [
     ".chroma_store",
     "__pycache__",
 ]
-

@@ -1,4 +1,4 @@
-<h1 align="center">clens</h1>
+<h1 align="center">Clens</h1>
 
 Clens is a semantic image search tool that allows users 
 to index a given directory of images and search through it 
@@ -6,7 +6,42 @@ using natural language, search for matching images using
 another image etc. locally on their device.
 
 ## Installation
-***Still in work***
+
+Clens currently requires Python 3.14 or newer. The recommended installation
+uses the CPU-only PyTorch packages, so it does not download NVIDIA/CUDA
+libraries on CPU machines.
+
+### Install with uv
+
+Install the published package as an isolated command-line tool. The extra
+PyTorch index is needed because CPU-only PyTorch wheels are published there:
+
+```bash
+uv tool install \
+  --index https://download.pytorch.org/whl/cpu \
+  --default-index https://pypi.org/simple \
+  clens-cli
+```
+
+### Install with pipx
+
+`pipx` also installs command-line applications into an isolated environment:
+
+```bash
+pipx install \
+  --pip-args="--index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple" \
+  clens-cli
+```
+
+After installation, verify the command:
+
+```bash
+clens version
+clens --help
+```
+
+The first indexing or search operation downloads the local CLIP model so may take a few minutes. It is
+cached locally and reused for later runs.
 
 ## Usage
 
@@ -131,4 +166,3 @@ For indepth info about the program
 ```bash
 clens -h/-help
 ```
-

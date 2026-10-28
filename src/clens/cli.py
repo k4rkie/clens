@@ -13,6 +13,7 @@ from typing import override
 import logging
 from clens.paths import CONFIG_FILE, RUNTIME_FILE
 from clens.runtime import RuntimeState
+from importlib.metadata import version
 
 
 class ClensCLIParser(argparse.ArgumentParser):
@@ -133,7 +134,7 @@ Commands:
 {command_desc}
 
 Examples:
-    clens start server --port 6969 --detach
+    clens server start --port 6969 --detach
 
     clens index ./Pictures
 
@@ -264,7 +265,7 @@ def cli():
     )
 
     # Version sub command
-    version = commands.add_parser(
+    version_parser = commands.add_parser(
         "version",
         custom_help=format_custom_help(
             "clens version", ClensCLIParser.COMMANDS["version"]
@@ -320,7 +321,7 @@ def cli():
 
             cmd_match_image(args.image_path, args.count, args.plain)
         case "version":
-            print("clens v0.0.1")
+            print(f"clens v{version('clens-cli')}")
         case _:
             clens_parser.print_help()
             sys.exit(0)
