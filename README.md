@@ -1,14 +1,21 @@
-<h1 align="center">Clens</h1>
+<div align="center">
+  <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+    <img src="assets/clens.webp" alt="Clens" width="60" style="margin: 0; display: block;" />
+    <h1 style="margin: 0; line-height: 1; display: flex; align-items: center; border-bottom: none">Clens</h1>
+  </div>
 
-Clens is a semantic image search tool that allows users 
-to index a given directory of images and search through it 
-using natural language, search for matching images using 
-another image etc. locally on their device.
+  <b>Local semantic image search tool</b>
 
-<div style="text-align: center;">
-<video width="80%" controls muted>
-  <source src="assets/demo.mp4" type="video/mp4">
-</video>
+  <video width="80%" controls muted>
+    <source src="assets/demo.mp4" type="video/mp4">
+  </video>
+
+  <p>
+    Clens is a semantic image search tool that allows users 
+    to index a given directory of images and search through it 
+    using natural language, search for matching images using 
+    another image etc. locally on their device.
+  </p>
 </div>
 
 ## Installation
