@@ -1,6 +1,6 @@
 <div align="center">
   <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-    <img src="assets/clens.webp" alt="Clens" width="60" style="margin: 0; display: block;" />
+    <img src="assets/clens.webp" alt="Clens" width="90" style="margin: 0; display: block;" />
     <h1 style="margin: 0; line-height: 1; display: flex; align-items: center; border-bottom: none">Clens</h1>
   </div>
 
