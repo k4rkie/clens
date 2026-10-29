@@ -15,7 +15,7 @@ runtime_state = RuntimeState().load_runtime()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     runtime_state.active_host = os.environ.get("CLENS_RUNTIME_HOST")
-    runtime_state.active_port = int(os.environ.get("CLENS_RUNTIME_PORT"))
+    runtime_state.active_port = os.environ.get("CLENS_RUNTIME_PORT")
     runtime_state.pid = os.getpid()
     runtime_state.save_runtime()
     await asyncio.to_thread(get_model)

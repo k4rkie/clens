@@ -161,7 +161,7 @@ def cmd_index_images(path: str) -> None:
 def cmd_find_images(query: str, count: int, plain: bool) -> None:
 
     if count <= 0:
-        logger.error(f"count must be greater than 0: got -c/--count: {count}")
+        logger.error(f"count must be greater than 0: got -c, --count: {count}")
         sys.exit(1)
 
     url = urljoin(

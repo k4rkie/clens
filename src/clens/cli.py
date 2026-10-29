@@ -327,7 +327,7 @@ def cli():
             sys.exit(0)
 
 
-def format_custom_help(prog: str, cmd_data: dict) -> str:
+def format_custom_help(prog: str, cmd_data) -> str:
     prog_name = prog if prog.startswith("clens") else f"clens {prog}"
     desc = cmd_data.get("desc", "")
     args = cmd_data.get("arguments", {})

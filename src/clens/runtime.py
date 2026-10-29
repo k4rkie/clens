@@ -7,7 +7,7 @@ import os
 
 class RuntimeState(BaseModel):
     active_host: str | None = None
-    active_port: int | None = None
+    active_port: str | None = None
     pid: int | None = None
 
     @classmethod
