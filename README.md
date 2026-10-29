@@ -5,6 +5,12 @@ to index a given directory of images and search through it
 using natural language, search for matching images using 
 another image etc. locally on their device.
 
+<div style="text-align: center;">
+<video width="80%" controls muted>
+  <source src="assets/demo.mp4" type="video/mp4">
+</video>
+</div>
+
 ## Installation
 
 Clens currently requires Python 3.14 or newer. The recommended installation
