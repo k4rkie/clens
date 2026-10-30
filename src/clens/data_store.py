@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from chromadb.api import ClientAPI
     from chromadb.api.types import QueryResult
     from clens.embedder import ImageData
+    from pathlib import Path
 
 
 _chroma_client = None
@@ -21,20 +22,20 @@ def get_chroma_client() -> ClientAPI:
 
 
 def filter_preexisting_images(
-    client: ClientAPI, candidates: list[Candidate]
-) -> list[Candidate]:
+    client: ClientAPI, candidates: dict[str, Path]
+) -> list[dict[str, Path]]:
     image_collection = client.get_or_create_collection(
         "image_data", configuration={"hnsw": {"space": "cosine"}}
     )
 
     existing_ids: set[str] = set(
-        image_collection.get(ids=[entry["id"] for entry in candidates])["ids"]
+        image_collection.get(ids=[id for id in candidates.keys()])["ids"]
     )
 
     if len(existing_ids) == 0:
         return candidates
 
-    return [entry for entry in candidates if entry["id"] not in existing_ids]
+    return [id for id in candidates.keys() if id not in existing_ids]
 
 
 def store_image_data(client: ClientAPI, image_data: list[ImageData]) -> None:

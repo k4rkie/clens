@@ -39,29 +39,29 @@ def generate_image_hash(image_path: Path) -> str:
 def embed_images(files: list[Path]) -> list[ImageData]:
     from clens.data_store import filter_preexisting_images, get_chroma_client
 
-    candidates: list[Candidate] = []
+    candidates_dict: dict[str, Path] = {}
     for file in files:
         image_hash = generate_image_hash(file)
-        candidates.append({"id": image_hash, "path": file})
+        candidates_dict[image_hash] = file
 
     chroma_client = get_chroma_client()
 
-    new_images = filter_preexisting_images(chroma_client, candidates)
+    new_images = filter_preexisting_images(chroma_client, candidates_dict)
 
     if len(new_images) == 0:
         return []
 
     embedded: list[ImageData] = []
-    for candidate in new_images:
+    for id in new_images.keys():
         from PIL import Image
 
-        pil_image = Image.open(candidate["path"])
+        pil_image = Image.open(new_images[id])
         embedding = embed_image(pil_image)
         embedded.append(
             {
-                "id": candidate["id"],
-                "file_type": guess_mime(candidate["path"]),
-                "path": candidate["path"],
+                "id": id,
+                "file_type": guess_mime(new_images[id]),
+                "path": new_images[id],
                 "embedding": embedding,
             }
         )
