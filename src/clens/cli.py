@@ -1,3 +1,4 @@
+import configparser
 import os
 
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
@@ -14,6 +15,7 @@ import logging
 from clens.paths import CONFIG_FILE, RUNTIME_FILE
 from clens.runtime import RuntimeState
 from importlib.metadata import version
+from clens.logger_config import configure_logging
 
 
 class ClensCLIParser(argparse.ArgumentParser):
@@ -143,12 +145,10 @@ Examples:
 """
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format=" [%(levelname)s] %(name)s: %(message)s",
-)
+configure_logging()
 
 logger = logging.getLogger(__name__)
+
 runtime_state = RuntimeState().load_runtime()
 
 config = AppConfig.load_from_file(CONFIG_FILE)

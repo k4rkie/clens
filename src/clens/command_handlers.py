@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from urllib.parse import urljoin, quote
 from clens.paths import RUNTIME_FILE, LOG_FILE
 from clens.cli import runtime_state
+from clens.logger_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +27,17 @@ def cmd_start_server(host: str, port: int, detach: bool):
 
     if not detach:
         try:
-            logger.info(f"Server running at http://{host}:{port}")
+            configure_logging(server=True)
+            logger.info(f"Starting clens server at http://{host}:{port}")
             import uvicorn
 
             uvicorn.run(
                 "clens.server:clens_server",
                 host=host,
                 port=port,
-                log_level=logging.INFO,
+                log_level="info",
                 access_log=False,
+                log_config=None,
             )
 
         finally:
@@ -44,19 +47,12 @@ def cmd_start_server(host: str, port: int, detach: bool):
         logger.info(f"Starting clens server...")
         LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-        output = open(LOG_FILE, "a")
+        output = open(LOG_FILE, "a", buffering=1, encoding="utf-8")
 
         start_cmd = [
             sys.executable,
             "-m",
-            "uvicorn",
-            "clens.server:clens_server",
-            "--host",
-            host,
-            "--port",
-            str(port),
-            "--log-level",
-            "warning",
+            "clens.server",
         ]
 
         process = subprocess.Popen(
@@ -204,7 +200,6 @@ def cmd_find_images(query: str, count: int, plain: bool) -> None:
 
 def cmd_match_image(img_path: str, count: int, plain: bool) -> None:
     image_to_match = Path(img_path).absolute()
-    print(count)
 
     if count <= 0:
         logger.error(f"count must be greater than 0: got -c/--count: {count}")
