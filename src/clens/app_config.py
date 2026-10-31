@@ -5,7 +5,6 @@ import json
 
 
 class UserPreferences(BaseModel):
-    default_host: str = "127.0.0.1"
     default_port: int = 6969
 
 

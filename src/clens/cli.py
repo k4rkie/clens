@@ -12,7 +12,7 @@ from clens.app_config import AppConfig
 from pathlib import Path
 from typing import override
 import logging
-from clens.paths import CONFIG_FILE, RUNTIME_FILE
+from clens.paths import CONFIG_FILE
 from clens.runtime import RuntimeState
 from importlib.metadata import version
 from clens.logger_config import configure_logging
@@ -27,7 +27,6 @@ class ClensCLIParser(argparse.ArgumentParser):
                     "desc": "Start the clens server",
                     "arguments": {},
                     "options": {
-                        "-H, --host": "Host to start the server on",
                         "-p, --port": "Port to start the server on",
                     },
                     "flags": {
@@ -40,7 +39,7 @@ class ClensCLIParser(argparse.ArgumentParser):
                     "arguments": {},
                     "options": {},
                     "flags": {},
-                    "req_server": True,
+                    "req_server": False,
                 },
                 "status": {
                     "desc": "Get the status of the clens server",
@@ -149,8 +148,6 @@ configure_logging()
 
 logger = logging.getLogger(__name__)
 
-runtime_state = RuntimeState().load_runtime()
-
 config = AppConfig.load_from_file(CONFIG_FILE)
 config.save_to_file()
 
@@ -175,12 +172,6 @@ def cli():
             "clens server start",
             ClensCLIParser.COMMANDS["server"]["arguments"]["start"],
         ),
-    )
-    server_start_parser.add_argument(
-        "-H",
-        "--host",
-        type=str,
-        default=config.preferences.default_host,
     )
     server_start_parser.add_argument(
         "-p",
@@ -275,7 +266,7 @@ def cli():
     args = clens_parser.parse_args()
 
     if args.command is not None and clens_parser.COMMANDS[args.command]["req_server"]:
-        if not RUNTIME_FILE.exists():
+        if not RuntimeState.load_runtime().is_running(timeout=1.0):
             logger.error("Clens server is not running!")
             logger.info("Start the server first with: clens server start")
             sys.exit(1)
@@ -286,7 +277,7 @@ def cli():
                 case "start":
                     from clens.command_handlers import cmd_start_server
 
-                    cmd_start_server(args.host, args.port, args.detach)
+                    cmd_start_server(args.port, args.detach)
                 case "stop":
                     from clens.command_handlers import cmd_stop_server
 

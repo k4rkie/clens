@@ -6,9 +6,7 @@
 
   <b>Local semantic image search tool</b>
 
-  <video width="80%" controls muted>
-    <source src="assets/demo.mp4" type="video/mp4">
-  </video>
+  https://github.com/user-attachments/assets/8095b1cc-5e83-4db1-9f9a-f51ab16346b4
 
   <p>
     Clens is a semantic image search tool that allows users 
@@ -73,7 +71,7 @@ clens server start
 clens server start --detach
 ```
 
-> Defaults to `127.0.0.1:6969`. You can pass custom host/port:
+> Defaults to `127.0.0.1:6969`. You can pass a custom port:
 > ```bash
 > clens server start --port 6969 --detach
 > ```
@@ -151,14 +149,12 @@ Clens automatically generates a config file at `~/.config/clens/config.json` (or
 ```json
 {
   "preferences": {
-    "default_host": "127.0.0.1",
     "default_port": 6969
   }
 }
 ```
 
 Currently available options:
-* `preferences.default_host`: Default host the server binds to and client commands connect to (default: `"127.0.0.1"`).
 * `preferences.default_port`: Default port used by the server and CLI (default: `6969`).
 
 ---
@@ -166,7 +162,7 @@ Currently available options:
 ## Commands 
 
 ```
-clens server start [-H HOST] [-p PORT] [-d]   Start clens server (-d to detach)
+clens server start [-p PORT] [-d]             Start clens server (-d to detach)
 clens server status                            Get server status
 clens server stop                              Stop running server
 clens index <path>                             Index a directory of images

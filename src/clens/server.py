@@ -5,7 +5,7 @@ import logging
 from clens.embedder import get_model
 from clens.data_store import get_chroma_client
 import asyncio
-from clens.runtime import RuntimeState
+from clens.runtime import RuntimeState, LOCAL_HOST
 from chromadb.errors import NotFoundError as ChromaNotFoundError
 import os
 from clens.logger_config import configure_logging
@@ -16,8 +16,7 @@ configure_logging(server=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    runtime_state.active_host = os.environ.get("CLENS_RUNTIME_HOST")
-    runtime_state.active_port = os.environ.get("CLENS_RUNTIME_PORT")
+    runtime_state.active_port = int(os.environ["CLENS_RUNTIME_PORT"])
     runtime_state.pid = os.getpid()
     runtime_state.save_runtime()
     await asyncio.to_thread(get_model)
@@ -120,7 +119,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         clens_server,
-        host=os.environ["CLENS_RUNTIME_HOST"],
+        host=LOCAL_HOST,
         port=int(os.environ["CLENS_RUNTIME_PORT"]),
         log_level="info",
         access_log=False,

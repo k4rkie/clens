@@ -1,4 +1,5 @@
 import signal
+import socket
 import requests
 from pathlib import Path
 import logging
@@ -9,31 +10,38 @@ import time
 from clens.data_schemas import ResponseBody
 from pydantic import ValidationError
 from urllib.parse import urljoin, quote
-from clens.paths import RUNTIME_FILE, LOG_FILE
-from clens.cli import runtime_state
+from clens.paths import LOG_FILE
+from clens.runtime import RuntimeState, LOCAL_HOST
 from clens.logger_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
+STARTUP_TIMEOUT = 300.0
+STATUS_TIMEOUT = 1.0
+STOP_TIMEOUT = 5.0
 
-def cmd_start_server(host: str, port: int, detach: bool):
 
-    if RUNTIME_FILE.exists() and runtime_state.pid is not None:
+def cmd_start_server(port: int, detach: bool):
+
+    if RuntimeState.load_runtime().is_running(timeout=STATUS_TIMEOUT):
         logger.warning("Clens server is already running!")
         return
 
-    os.environ["CLENS_RUNTIME_HOST"] = host
     os.environ["CLENS_RUNTIME_PORT"] = str(port)
+
+    if is_port_in_use(port):
+        logger.error(f"The port: {port} is already in use! Try another port instead")
+        sys.exit(1)
 
     if not detach:
         try:
             configure_logging(server=True)
-            logger.info(f"Starting clens server at http://{host}:{port}")
+            logger.info(f"Starting clens server at http://{LOCAL_HOST}:{port}")
             import uvicorn
 
             uvicorn.run(
                 "clens.server:clens_server",
-                host=host,
+                host=LOCAL_HOST,
                 port=port,
                 log_level="info",
                 access_log=False,
@@ -56,74 +64,80 @@ def cmd_start_server(host: str, port: int, detach: bool):
         ]
 
         process = subprocess.Popen(
-            start_cmd, stdout=output, stderr=output, start_new_session=True
+            start_cmd, stdout=subprocess.DEVNULL, stderr=output, start_new_session=True
         )
         output.close()
 
-        # Check if server is actually up
-        health_url = f"http://{host}:{port}/api/health"
-        server_started = False
-        timeout = 60.0
-        start_time = time.time()
+        started_state = RuntimeState(active_port=port, pid=process.pid)
 
-        while time.time() - start_time < timeout:
-            exit_code = process.poll()
-            if exit_code is not None:
-                break
-
-            try:
-                res = requests.get(health_url, timeout=0.2)
-                if res.status_code == 200:
-                    server_started = True
-                    break
-            except requests.RequestException:
-                time.sleep(0.1)
-
-        if server_started:
+        if started_state.wait_until_running(deadline=STARTUP_TIMEOUT):
             logger.info(
-                f"Server started in background on http://{host}:{port} (PID: {process.pid})"
+                f"Server started in background on http://{LOCAL_HOST}:{port} (PID: {process.pid})"
             )
             logger.info(f"Logs available at: {LOG_FILE}")
         else:
-            # if server didnt respond check if the subprocess is still up
-
-            # if not timeout and kill the process
             if process.poll() is None:
                 process.terminate()
-                process.wait(timeout=1.0)
+                try:
+                    process.wait(timeout=1.0)
+                except subprocess.TimeoutExpired:
+                    process.kill()
                 logger.error("Server start failed! Clens server timed out.")
-
-            logger.error("Failed to start clens server!")
+            else:
+                logger.error("Failed to start clens server!")
+            sys.exit(1)
 
 
 def cmd_stop_server():
-    if not RUNTIME_FILE.exists():
+    state = RuntimeState.load_runtime()
+    pid = state.pid
+
+    if pid is None or not state.is_pid_running():
+        state.clear_runtime()
         logger.error("No running clens server found.")
         return
+
     try:
-        os.kill(runtime_state.pid, signal.SIGTERM)
-        logger.info(f"Clens server stopped successfully (PID: {runtime_state.pid})")
-    except ProcessLookupError:
-        logger.info(f"Clens server was already stopped")
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
+        state.clear_runtime()
+        logger.info("Clens server was already stopped")
+        return
+
+    deadline = time.monotonic() + STOP_TIMEOUT
+    while time.monotonic() < deadline and state.is_pid_running():
+        time.sleep(0.1)
+
+    if state.is_pid_running():
+        logger.warning(f"Clens server is still shutting down (PID: {pid})")
+    else:
+        state.clear_runtime()
+        logger.info(f"Clens server stopped successfully (PID: {pid})")
 
 
 def cmd_server_status():
-    if RUNTIME_FILE.exists() and runtime_state.pid is not None:
-        try:
-            os.kill(runtime_state.pid, 0)
-            print(
-                f"Clens server is running on http://{runtime_state.active_host}:{runtime_state.active_port} (PID: {runtime_state.pid}) "
-            )
-            return
-        except ProcessLookupError, OSError:
-            pass
-    else:
+    state = RuntimeState.load_runtime()
+
+    if not state.is_pid_running():
+        state.clear_runtime()
         print("Clens server isnt running!! Start the server with: clens server start")
+        return
+
+    if state.is_healthy(timeout=STATUS_TIMEOUT):
+        print(
+            f"Clens server is running on http://{LOCAL_HOST}:{state.active_port} (PID: {state.pid})"
+        )
+        return
+
+    print(
+        f"Clens server process is running (PID: {state.pid}) but is not responding on http://{LOCAL_HOST}:{state.active_port}"
+    )
 
 
 def cmd_index_images(path: str) -> None:
+    state = RuntimeState.load_runtime()
     root_dir = Path(path).absolute()
-    url = f"http://{runtime_state.active_host}:{runtime_state.active_port}/api/index"
+    url = f"http://{LOCAL_HOST}:{state.active_port}/api/index"
 
     logger.info(f"Indexing the directory: {str(root_dir)}...")
     logger.info(f"This may take a few moments...")
@@ -160,8 +174,9 @@ def cmd_find_images(query: str, count: int, plain: bool) -> None:
         logger.error(f"count must be greater than 0: got -c, --count: {count}")
         sys.exit(1)
 
+    state = RuntimeState.load_runtime()
     url = urljoin(
-        f"http://{runtime_state.active_host}:{runtime_state.active_port}/api/find/",
+        f"http://{LOCAL_HOST}:{state.active_port}/api/find/",
         quote(query),
     )
 
@@ -205,7 +220,8 @@ def cmd_match_image(img_path: str, count: int, plain: bool) -> None:
         logger.error(f"count must be greater than 0: got -c/--count: {count}")
         sys.exit(1)
 
-    url = f"http://{runtime_state.active_host}:{runtime_state.active_port}/api/match"
+    state = RuntimeState.load_runtime()
+    url = f"http://{LOCAL_HOST}:{state.active_port}/api/match"
 
     logger.info(f"Finding matches for {os.path.basename(img_path)}...")
     logger.info(f"This may take a few moments...")
@@ -315,3 +331,11 @@ def display_results_plain(response) -> None:
         filename = Path(path_str).name or "Unknown"
         similarity = max(0.0, min(1.0, 1.0 - dist)) * 100
         print(f"{i}\t{similarity:.1f}%\t{filename}\t{path_str}")
+
+
+def is_port_in_use(port: int) -> bool:
+    try:
+        with socket.create_connection((LOCAL_HOST, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
