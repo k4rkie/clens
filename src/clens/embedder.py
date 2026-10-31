@@ -53,10 +53,13 @@ def embed_images(files: list[Path]) -> list[ImageData]:
 
     embedded: list[ImageData] = []
     for id in new_images.keys():
-        from PIL import Image
+        from PIL import Image, UnidentifiedImageError
 
-        pil_image = Image.open(new_images[id])
-        embedding = embed_image(pil_image)
+        try:
+            pil_image = Image.open(new_images[id])
+            embedding = embed_image(pil_image)
+        except (UnidentifiedImageError, OSError):
+            continue
         embedded.append(
             {
                 "id": id,

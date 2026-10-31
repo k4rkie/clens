@@ -1,5 +1,6 @@
 from pathlib import Path
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+from clens.exceptions import InvalidImageError
 
 
 def find_images(query_text: str, count: int):
@@ -17,8 +18,13 @@ def match_images(img_path: Path, count: int):
     from clens.data_store import get_chroma_client, retrieve_images
     from PIL import Image
 
-    image_data = Image.open(img_path)
-    image_embedding = embed_image(image_data)
+    try:
+        image_data = Image.open(img_path)
+        image_embedding = embed_image(image_data)
+    except (UnidentifiedImageError, OSError) as exc:
+        raise InvalidImageError(
+            f"Could not read the provided image (it may be corrupted or unsupported): {img_path}"
+        ) from exc
 
     chroma_client = get_chroma_client()
 

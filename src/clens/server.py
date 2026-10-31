@@ -6,6 +6,7 @@ from clens.embedder import get_model
 from clens.data_store import get_chroma_client
 import asyncio
 from clens.runtime import RuntimeState, LOCAL_HOST
+from clens.exceptions import NoImagesFoundError, InvalidImageError
 from chromadb.errors import NotFoundError as ChromaNotFoundError
 import os
 from clens.logger_config import configure_logging
@@ -52,6 +53,10 @@ def index_dir(req: IndexDirData, response: Response):
         logger.warning("Index directory does not exist: %s", req.path)
         response.status_code = status.HTTP_400_BAD_REQUEST
         return ResponseBody(message=str(exc), error_type="FileNotFoundError")
+    except NoImagesFoundError as exc:
+        logger.warning("No supported images found in: %s", req.path)
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return ResponseBody(message=str(exc), error_type=exc.error_type)
     except Exception:
         logger.exception("Unexpected error while indexing directory: %s", req.path)
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -105,6 +110,10 @@ def match_image(image_path: str, response: Response, count: int = 5):
             message="Seems like you have no indexed directories",
             error_type="ChromaNotFoundError",
         )
+    except InvalidImageError as exc:
+        logger.warning("Invalid image provided: %s", image_path)
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return ResponseBody(message=str(exc), error_type=exc.error_type)
     except Exception:
         logger.exception("Unexpected error while matching image: %s", image_path)
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from urllib.parse import urljoin, quote
 from clens.paths import LOG_FILE
 from clens.runtime import RuntimeState, LOCAL_HOST
+from clens.exceptions import NoImagesFoundError
 from clens.logger_config import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -159,9 +160,11 @@ def cmd_index_images(path: str) -> None:
         logger.error(f"Could not connect to {url}")
     except requests.exceptions.Timeout:
         logger.error(f"Request to {url} timed out")
-    except requests.exceptions.HTTPError as e:
+    except requests.exceptions.HTTPError:
         data = ResponseBody.model_validate_json(response.text)
         logger.error(f"{data.message}")
+        if data.error_type == NoImagesFoundError.error_type:
+            logger.info("Make sure the directory contains .jpg or .png images.")
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {e}")
 
@@ -248,6 +251,7 @@ def cmd_match_image(img_path: str, count: int, plain: bool) -> None:
         logger.error(f"Timeout: Request to {url} timed out")
     except requests.exceptions.HTTPError:
         data = ResponseBody.model_validate_json(response.text)
+        logger.error(f"{data.message}")
         if data.error_type == "ChromaNotFoundError":
             logger.info(f"Index a directory first! Try: clens index <path>")
     except requests.exceptions.RequestException as e:

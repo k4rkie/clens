@@ -23,7 +23,7 @@ def get_chroma_client() -> ClientAPI:
 
 def filter_preexisting_images(
     client: ClientAPI, candidates: dict[str, Path]
-) -> list[dict[str, Path]]:
+) -> dict[str, Path]:
     image_collection = client.get_or_create_collection(
         "image_data", configuration={"hnsw": {"space": "cosine"}}
     )
@@ -35,7 +35,9 @@ def filter_preexisting_images(
     if len(existing_ids) == 0:
         return candidates
 
-    return [id for id in candidates.keys() if id not in existing_ids]
+    return {
+        id: path for id, path in candidates.items() if id not in existing_ids
+    }
 
 
 def store_image_data(client: ClientAPI, image_data: list[ImageData]) -> None:
